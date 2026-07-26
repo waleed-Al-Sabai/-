@@ -1,0 +1,75 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..9c089a7aaff1b00264bd00ce258303a7963e3677
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,65 @@
++const devices = [
++  { name: 'MikroTik CCR', type: 'RouterOS', ip: '192.168.88.1', status: 'online', channel: '—', recommended: '—', score: 98 },
++  { name: 'NanoStation M5 - برج الشمال', type: 'AirOS', ip: '10.10.1.21', status: 'online', channel: '5745 MHz', recommended: '5805 MHz', score: 91 },
++  { name: 'PowerBeam AC - الربط الرئيسي', type: 'AirMAX AC', ip: '10.10.1.30', status: 'warning', channel: '5660 MHz', recommended: '5520 MHz', score: 84 },
++  { name: 'AP السوق', type: 'Access Point', ip: '10.10.2.14', status: 'online', channel: '6 / 2.4GHz', recommended: '11 / 2.4GHz', score: 88 },
++  { name: 'AP المدرسة', type: 'Access Point', ip: '10.10.2.18', status: 'offline', channel: '36 / 5GHz', recommended: '44 / 5GHz', score: 0 },
++];
++
++const statusText = { online: 'متصل', warning: 'بحاجة ضبط', offline: 'غير متصل' };
++
++function renderDevices() {
++  document.querySelector('#devicesBody').innerHTML = devices.map((device, index) => `
++    <tr>
++      <td>${device.name}</td><td>${device.type}</td><td>${device.ip}</td>
++      <td><span class="status ${device.status}">${statusText[device.status]}</span></td>
++      <td>${device.channel}</td><td>${device.recommended}</td>
++      <td><button data-index="${index}" class="apply-channel">تطبيق</button></td>
++    </tr>`).join('');
++
++  document.querySelector('#onlineCount').textContent = devices.filter(d => d.status !== 'offline').length;
++  const active = devices.filter(d => d.score > 0);
++  document.querySelector('#signalAvg').textContent = `${Math.round(active.reduce((sum, d) => sum + d.score, 0) / active.length)}%`;
++  document.querySelector('#alertsCount').textContent = devices.filter(d => d.status !== 'online').length;
++}
++
++function renderChannels() {
++  document.querySelector('#channelList').innerHTML = devices
++    .filter(d => d.recommended !== '—')
++    .map(d => `<div class="channel"><span>${d.name}<br><small>${d.channel} → ${d.recommended}</small></span><span class="score">${d.score}%</span></div>`)
++    .join('');
++}
++
++function generateVouchers() {
++  const qty = Number(document.querySelector('#cardQty').value);
++  const profile = document.querySelector('#profile').value;
++  const vouchers = Array.from({ length: Math.min(qty, 5) }, (_, i) => {
++    const code = `UM-${Date.now().toString(36).slice(-4).toUpperCase()}-${(i + 1).toString().padStart(3, '0')}`;
++    return `<div class="voucher"><strong>${code}</strong><br><small>${profile} — كلمة المرور: ${Math.random().toString(36).slice(2, 8).toUpperCase()}</small></div>`;
++  });
++  document.querySelector('#voucherPreview').innerHTML = vouchers.join('') + (qty > 5 ? `<small>تم عرض أول 5 بطاقات من ${qty}.</small>` : '');
++  document.querySelector('#cardsCount').textContent = qty;
++}
++
++function simulateScan() {
++  devices.forEach(device => {
++    if (device.status !== 'offline') device.score = Math.max(75, Math.min(99, device.score + Math.round(Math.random() * 8 - 3)));
++  });
++  renderDevices();
++  renderChannels();
++}
++
++document.querySelector('#generateCards').addEventListener('click', generateVouchers);
++document.querySelector('#scanBtn').addEventListener('click', simulateScan);
++document.addEventListener('click', event => {
++  if (!event.target.matches('.apply-channel')) return;
++  const device = devices[Number(event.target.dataset.index)];
++  device.channel = device.recommended;
++  device.status = 'online';
++  renderDevices();
++  renderChannels();
++});
++
++renderDevices();
++renderChannels();
++generateVouchers();
+ 
+EOF
+)
